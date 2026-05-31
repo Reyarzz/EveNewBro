@@ -25,13 +25,20 @@ if ($status) {
   Write-Host 'No changes to commit (already clean).' -ForegroundColor Yellow
 }
 
-$remote = git remote get-url origin 2>$null
-if ($LASTEXITCODE -ne 0) {
-  git remote add origin https://github.com/Reyarzz/EveNewBro.git
+$originUrl = 'https://github.com/Reyarzz/EveNewBro.git'
+$remotes = @(git remote 2>$null)
+if ($remotes -notcontains 'origin') {
+  git remote add origin $originUrl
+  if ($LASTEXITCODE -ne 0) { throw 'git remote add failed' }
   Write-Host 'Added remote origin.' -ForegroundColor Green
-} elseif ($remote -ne 'https://github.com/Reyarzz/EveNewBro.git') {
-  git remote set-url origin https://github.com/Reyarzz/EveNewBro.git
-  Write-Host "Updated remote origin to EveNewBro." -ForegroundColor Green
+} else {
+  $current = (git remote get-url origin 2>$null | Out-String).Trim()
+  if ($current -and $current -ne $originUrl) {
+    git remote set-url origin $originUrl
+    Write-Host 'Updated remote origin URL.' -ForegroundColor Green
+  } else {
+    Write-Host 'Remote origin already set.' -ForegroundColor DarkGray
+  }
 }
 
 git branch -M main

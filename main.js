@@ -474,7 +474,13 @@ ipcMain.handle('mail:read', async (_event, { charId, mailId }) => mail.readMail(
 ipcMain.handle('mail:send', async (_event, payload) => mail.sendMail(payload.charId, payload));
 
 // ---------- New Eden search ----------
-ipcMain.handle('eden:search', async (_event, query) => edenSearch.search(query));
+ipcMain.handle('eden:search', async (_event, query) => {
+  try {
+    return await edenSearch.search(query);
+  } catch (err) {
+    return { query: String(query || '').trim(), groups: [], error: err.message || String(err) };
+  }
+});
 
 // Windows taskbar / Start menu grouping (matches packaged appId).
 if (process.platform === 'win32') {

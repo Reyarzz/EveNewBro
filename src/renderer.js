@@ -4723,7 +4723,7 @@ function renderSearch() {
         placeholder="Character, corp, alliance, system, region, item…" value="${escapeAttr(searchState.query)}" />
       <button class="primary-btn" id="eden-go">Search</button>
     </div>
-    <div class="setup-text">Unified New Eden search — ESI fuzzy search plus exact name resolution for items and entities.</div>
+    <div class="setup-text">Search pilots, corps, items, and locations. Open the <b>Map</b> tab once first if system/region search returns nothing (builds the local star map index).</div>
     <div id="eden-results"></div>`;
   const input = root.querySelector('#eden-q');
   const go = () => doEdenSearch(input.value);
@@ -4744,6 +4744,7 @@ async function doEdenSearch(q) {
   try {
     const res = await window.eden.search(searchState.query);
     searchState.groups = res.groups || [];
+    if (res.error) searchState.error = res.error;
   } catch (err) {
     searchState.groups = [];
     searchState.error = err.message || String(err);
@@ -4765,7 +4766,8 @@ function renderEdenResults() {
   }
   const groups = searchState.groups || [];
   if (!groups.length) {
-    el.innerHTML = '<div class="empty-state">Enter a name to search characters, corps, systems, items, and more.</div>';
+    el.innerHTML =
+      '<div class="empty-state">No matches. Try another spelling, open <b>Map</b> once for system data, or use exact in-game names for items.</div>';
     return;
   }
   el.innerHTML = groups
