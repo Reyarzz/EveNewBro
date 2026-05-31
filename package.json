@@ -1,0 +1,78 @@
+{
+  "name": "eve-newbro-overlay",
+  "version": "0.2.0",
+  "description": "EVE Online companion overlay — market, map, intel, fits, and account tools.",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "desktop": "electron . --desktop",
+    "dev": "electron . --dev",
+    "icons": "node scripts/generate-icons.js",
+    "prebuild": "node scripts/generate-icons.js",
+    "build": "node scripts/check-build.js && electron-builder --win",
+    "build:portable": "electron-builder --win portable",
+    "build:dir": "electron-builder --win --dir"
+  },
+  "keywords": [
+    "eve-online",
+    "overlay",
+    "electron",
+    "new-player"
+  ],
+  "author": "",
+  "license": "MIT",
+  "build": {
+    "appId": "com.evenewbro.overlay",
+    "productName": "EVE NewBro",
+    "copyright": "Copyright © EVE NewBro contributors",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "config.js",
+      "src/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": ".env.example",
+        "to": ".env.example"
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "build/icon.ico",
+      "artifactName": "EVE-NewBro-Setup-${version}.${ext}",
+      "signAndEditExecutable": false,
+      "sign": null
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "EVE NewBro",
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "installerHeaderIcon": "build/icon.ico"
+    },
+    "portable": {
+      "artifactName": "EVE-NewBro-Portable-${version}.${ext}"
+    }
+  },
+  "devDependencies": {
+    "electron": "^42.0.0",
+    "electron-builder": "^25.1.8",
+    "png-to-ico": "^2.1.8",
+    "pngjs": "^7.0.0"
+  }
+}

@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>EVE NewBro</title>
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="design.css" />
+  </head>
+  <body class="mode-overlay">
+    <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" class="icon-sprite">
+      <symbol id="ico-map" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+        <circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 3 4 6 4 9s-1.5 6-4 9M12 3c-2.5 3-4 6-4 9s1.5 6 4 9"/>
+      </symbol>
+      <symbol id="ico-intel" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+        <path d="M12 3v3M5 7l2 2M19 7l-2 2"/><circle cx="12" cy="14" r="5"/><path d="M10 14h4M12 12v4"/>
+      </symbol>
+      <symbol id="ico-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+        <circle cx="11" cy="11" r="6"/><path d="M20 20l-4-4"/>
+      </symbol>
+      <symbol id="ico-market" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+        <path d="M4 7h16l-2 12H6L4 7z"/><path d="M9 7V5a3 3 0 016 0v2"/>
+      </symbol>
+      <symbol id="ico-industry" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+        <path d="M3 20h18M6 20V10l4-3v13M14 20V6l4-2v16"/>
+      </symbol>
+      <symbol id="ico-account" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+        <circle cx="9" cy="8" r="3"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M16 11h5M16 15h5"/>
+      </symbol>
+      <symbol id="ico-fits" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+        <path d="M12 2l7 4v6c0 5-3 9-7 10C8 21 5 17 5 12V6l7-4z"/>
+      </symbol>
+      <symbol id="ico-tools" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+        <path d="M14.7 6.3a4 4 0 105.7 5.7L10 22l-4 1 1-4 7.7-12.7z"/>
+      </symbol>
+      <symbol id="ico-tips" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+        <path d="M12 3a7 7 0 00-4 12.7V19h8v-3.3A7 7 0 0012 3z"/><path d="M10 22h4"/>
+      </symbol>
+      <symbol id="ico-me" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+        <circle cx="12" cy="8" r="4"/><path d="M5 20c0-4 3-7 7-7s7 3 7 7"/>
+      </symbol>
+    </svg>
+
+    <div id="app">
+      <header id="titlebar">
+        <div class="brand">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <div class="brand-text">
+            <span class="brand-name">NewBro</span>
+            <span class="brand-tag">EVE companion</span>
+          </div>
+        </div>
+
+        <div id="eve-status-strip" class="status-pills" title="Tranquility · EVE time · downtime">
+          <span class="ess-clock">--:--:--</span>
+          <span class="ess-label">UTC</span>
+          <span class="ess-tq">
+            <span class="ess-dot"></span><span class="ess-tq-text">TQ …</span>
+          </span>
+          <span class="ess-dt"></span>
+        </div>
+
+        <div class="header-actions">
+          <button type="button" id="expand-btn" class="btn btn-ghost btn-sm" title="Larger layout (Alt+Shift+D)">
+            Expand
+          </button>
+          <button type="button" id="lock-btn" class="btn btn-ghost btn-sm" title="Click-through (Alt+Shift+E)">
+            Lock
+          </button>
+          <button type="button" id="hide-btn" class="btn btn-icon" title="Hide window (Alt+E)" aria-label="Hide">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+      </header>
+
+      <div class="app-body">
+        <nav id="app-nav" class="app-nav" aria-label="Main navigation">
+          <div class="nav-group">
+            <span class="nav-group-label">Intel</span>
+            <button type="button" class="nav-item" data-tab="map" title="Live map &amp; routes">
+              <svg class="nav-icon"><use href="#ico-map"/></svg><span class="nav-label">Map</span>
+            </button>
+            <button type="button" class="nav-item" data-tab="intel" title="Pilot &amp; corp lookup">
+              <svg class="nav-icon"><use href="#ico-intel"/></svg><span class="nav-label">Intel</span>
+            </button>
+            <button type="button" class="nav-item" data-tab="search" title="Search New Eden">
+              <svg class="nav-icon"><use href="#ico-search"/></svg><span class="nav-label">Search</span>
+            </button>
+          </div>
+          <div class="nav-group">
+            <span class="nav-group-label">Trade</span>
+            <button type="button" class="nav-item active" data-tab="market" title="Prices &amp; market tools">
+              <svg class="nav-icon"><use href="#ico-market"/></svg><span class="nav-label">Market</span>
+            </button>
+            <button type="button" class="nav-item" data-tab="industry" title="Build &amp; ore tools">
+              <svg class="nav-icon"><use href="#ico-industry"/></svg><span class="nav-label">Industry</span>
+            </button>
+          </div>
+          <div class="nav-group">
+            <span class="nav-group-label">Pilot</span>
+            <button type="button" class="nav-item" data-tab="account" title="All characters &amp; mail">
+              <svg class="nav-icon"><use href="#ico-account"/></svg><span class="nav-label">Account</span>
+            </button>
+            <button type="button" class="nav-item" data-tab="me" title="Your active character">
+              <svg class="nav-icon"><use href="#ico-me"/></svg><span class="nav-label">Me</span>
+            </button>
+            <button type="button" class="nav-item" data-tab="fits" title="Ship fits library">
+              <svg class="nav-icon"><use href="#ico-fits"/></svg><span class="nav-label">Fits</span>
+            </button>
+          </div>
+          <div class="nav-group">
+            <span class="nav-group-label">Help</span>
+            <button type="button" class="nav-item" data-tab="tools" title="Damage sheet, notes, news">
+              <svg class="nav-icon"><use href="#ico-tools"/></svg><span class="nav-label">Tools</span>
+            </button>
+            <button type="button" class="nav-item" data-tab="tips" title="New player guides">
+              <svg class="nav-icon"><use href="#ico-tips"/></svg><span class="nav-label">Tips</span>
+            </button>
+          </div>
+        </nav>
+
+        <div class="app-main">
+          <main id="content">
+            <section id="market-view" class="view active"></section>
+            <section id="map-view" class="view"></section>
+            <section id="intel-view" class="view"></section>
+            <section id="account-view" class="view"></section>
+            <section id="search-view" class="view"></section>
+            <section id="industry-view" class="view"></section>
+            <section id="fits-view" class="view"></section>
+            <section id="tools-view" class="view"></section>
+            <section id="tips-view" class="view"></section>
+            <section id="me-view" class="view"></section>
+          </main>
+
+          <footer id="statusbar">
+            <span id="status-text">Drag the title bar to move · Alt+Shift+D expand</span>
+            <span id="layout-tier" class="layout-tier"></span>
+          </footer>
+        </div>
+      </div>
+    </div>
+
+    <script type="module" src="renderer.js"></script>
+  </body>
+</html>

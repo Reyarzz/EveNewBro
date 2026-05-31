@@ -1,0 +1,15 @@
+node_modules/
+.env
+install-log.txt
+shelltest.txt
+dist/
+build/icon.png
+build/icon.ico
+build-output.log
+build-log.txt
+git-status.txt
+full-build.log
+ewb-debug.json
+*.log
+.DS_Store
+Thumbs.db
