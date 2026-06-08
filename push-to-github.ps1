@@ -51,8 +51,9 @@ if ($LASTEXITCODE -eq 0) {
   Write-Host ''
   Write-Host 'SUCCESS: https://github.com/Reyarzz/EveNewBro' -ForegroundColor Green
   Write-Host ''
-  Write-Host 'Next: upload dist\EVE-NewBro-Setup-0.2.0.exe as a GitHub Release' -ForegroundColor Yellow
-  Write-Host '  Repo -> Releases -> Create release -> attach the .exe'
+  Write-Host 'Next: publish installer for players (no build.bat for users):' -ForegroundColor Yellow
+  Write-Host '  powershell -ExecutionPolicy Bypass -File .\scripts\tag-and-release.ps1' -ForegroundColor Cyan
+  Write-Host '  GitHub Actions builds the .exe and attaches it to Releases automatically.'
 } else {
   Write-Host ''
   Write-Host 'Push failed. Common fixes:' -ForegroundColor Red

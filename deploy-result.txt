@@ -1,0 +1,30 @@
+EVE NewBro 0.2.1 Deploy Status
+Generated: 2026-06-07
+
+VERSION
+- package.json: 0.2.1 (already bumped)
+
+BUILD
+- Status: NOT COMPLETED (automated shell could not run npm/electron-builder)
+- Installer found: C:\Users\steve\eve-newbro-overlay\dist\EVE-NewBro-Setup-0.2.0.exe (stale, 2026-05-31)
+- Expected: C:\Users\steve\eve-newbro-overlay\dist\EVE-NewBro-Setup-0.2.1.exe — MISSING
+
+GIT
+- Commit hash: N/A (not committed from agent)
+- Push status: NOT EXECUTED
+- Remote: https://github.com/Reyarzz/EveNewBro.git
+
+GITHUB RELEASE
+- Release URL: N/A
+- gh CLI: not verified / release not created
+
+MANUAL STEPS (run in PowerShell from project root):
+  cd C:\Users\steve\eve-newbro-overlay
+  $env:CSC_IDENTITY_AUTO_DISCOVERY='false'
+  npm install
+  npm run build
+  git add -A
+  git reset node_modules
+  git commit -m "Add Ops hub, Photon HUD overlay UI, and block dock webview ad trackers"
+  git push origin main
+  gh release create v0.2.1 --title "EVE NewBro 0.2.1" --notes "- Ops tab (10 elite tools)`n- Photon HUD overlay UI`n- Webview ad-block for zKill/Dotlan dock" .\dist\EVE-NewBro-Setup-0.2.1.exe

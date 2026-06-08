@@ -54,6 +54,22 @@ contextBridge.exposeInMainWorld('eden', {
   search: (query) => ipcRenderer.invoke('eden:search', query)
 });
 
+contextBridge.exposeInMainWorld('ops', {
+  routeBrief: (from, to, flag) => ipcRenderer.invoke('ops:routeBrief', { from, to, flag }),
+  situational: (range) => ipcRenderer.invoke('ops:situational', range),
+  careerStats: () => ipcRenderer.invoke('ops:careerStats'),
+  killmailAnalyze: (input) => ipcRenderer.invoke('ops:killmailAnalyze', input),
+  courierBoard: (regionId) => ipcRenderer.invoke('ops:courierBoard', regionId),
+  whGet: () => ipcRenderer.invoke('ops:whGet'),
+  whAdd: (link) => ipcRenderer.invoke('ops:whAdd', link),
+  whRemove: (id) => ipcRenderer.invoke('ops:whRemove', id),
+  whClear: () => ipcRenderer.invoke('ops:whClear'),
+  fleetRollup: (text) => ipcRenderer.invoke('ops:fleetRollup', text),
+  arbitragePro: (flag) => ipcRenderer.invoke('ops:arbitragePro', flag),
+  fitLogistics: (eft) => ipcRenderer.invoke('ops:fitLogistics', eft),
+  gateCamps: () => ipcRenderer.invoke('ops:gateCamps')
+});
+
 contextBridge.exposeInMainWorld('community', {
   state: () => ipcRenderer.invoke('community:state'),
   setCreds: (clientId, apiKey) =>

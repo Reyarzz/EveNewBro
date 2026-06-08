@@ -2,7 +2,10 @@
 cd /d "%~dp0"
 title EVE NewBro Build
 echo.
-echo === EVE NewBro Windows Build ===
+echo === EVE NewBro Windows Build (developers only) ===
+echo.
+echo Players: download the installer from GitHub Releases instead of building:
+echo   https://github.com/Reyarzz/EveNewBro/releases/latest
 echo.
 
 where node >nul 2>&1

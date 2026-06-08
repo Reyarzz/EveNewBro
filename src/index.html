@@ -15,6 +15,9 @@
       <symbol id="ico-intel" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
         <path d="M12 3v3M5 7l2 2M19 7l-2 2"/><circle cx="12" cy="14" r="5"/><path d="M10 14h4M12 12v4"/>
       </symbol>
+      <symbol id="ico-ops" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+        <circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1l2.1-2.1M17 7l2.1-2.1"/>
+      </symbol>
       <symbol id="ico-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
         <circle cx="11" cy="11" r="6"/><path d="M20 20l-4-4"/>
       </symbol>
@@ -41,13 +44,22 @@
       </symbol>
     </svg>
 
-    <div id="app">
+    <div id="app" class="hud-shell">
+      <div class="hud-accent-bar" aria-hidden="true"></div>
+      <div class="hud-corners" aria-hidden="true">
+        <span class="hud-c tl"></span>
+        <span class="hud-c tr"></span>
+        <span class="hud-c bl"></span>
+        <span class="hud-c br"></span>
+      </div>
+      <div class="hud-scanline" aria-hidden="true"></div>
+
       <header id="titlebar">
         <div class="brand">
           <span class="brand-mark" aria-hidden="true"></span>
           <div class="brand-text">
             <span class="brand-name">NewBro</span>
-            <span class="brand-tag">EVE companion</span>
+            <span class="brand-tag">External overlay · EULA safe</span>
           </div>
         </div>
 
@@ -85,6 +97,9 @@
             </button>
             <button type="button" class="nav-item" data-tab="search" title="Search New Eden">
               <svg class="nav-icon"><use href="#ico-search"/></svg><span class="nav-label">Search</span>
+            </button>
+            <button type="button" class="nav-item" data-tab="ops" title="Elite route intel, fleet rollup, WH log">
+              <svg class="nav-icon"><use href="#ico-ops"/></svg><span class="nav-label">Ops</span>
             </button>
           </div>
           <div class="nav-group">
@@ -126,6 +141,7 @@
             <section id="intel-view" class="view"></section>
             <section id="account-view" class="view"></section>
             <section id="search-view" class="view"></section>
+            <section id="ops-view" class="view"></section>
             <section id="industry-view" class="view"></section>
             <section id="fits-view" class="view"></section>
             <section id="tools-view" class="view"></section>
@@ -134,7 +150,7 @@
           </main>
 
           <footer id="statusbar">
-            <span id="status-text">Drag the title bar to move · Alt+Shift+D expand</span>
+            <span id="status-text">TITLEBAR · DRAG · ALT+SHIFT+D EXPAND · ALT+E HIDE</span>
             <span id="layout-tier" class="layout-tier"></span>
           </footer>
         </div>

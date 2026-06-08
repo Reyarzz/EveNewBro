@@ -1,8 +1,20 @@
 # EVE NewBro Overlay
 
+[![Latest release](https://img.shields.io/github/v/release/Reyarzz/EveNewBro?label=download&style=flat-square)](https://github.com/Reyarzz/EveNewBro/releases/latest)
+
 A lightweight, transparent, always-on-top desktop overlay for **EVE Online** that
 gives new players quick tips and curated starter ship fits on screen — without
 ever touching the game client.
+
+## Download (players — no build required)
+
+1. Go to **[github.com/Reyarzz/EveNewBro/releases/latest](https://github.com/Reyarzz/EveNewBro/releases/latest)**
+2. Download **`EVE-NewBro-Setup-….exe`** under Assets
+3. Run the installer → launch **EVE NewBro** from the desktop shortcut
+
+Full steps (SmartScreen, optional SSO): **[INSTALL.md](INSTALL.md)**
+
+> **You do not need** Node.js, `git clone`, or `build.bat` unless you are developing the app.
 
 > **Why an external overlay and not an "addon"?** EVE Online does not allow code
 > to run inside the game client (there is no Lua/addon API like WoW). The safe,
@@ -67,6 +79,17 @@ ever touching the game client.
 - **Search** tab (no login): **New Eden unified search** — characters, corporations,
   alliances, systems, regions, constellations, items, and structures. Click a pilot or
   org to jump to **Intel**; corps also open **Account → Corp**; systems fly the **Map**.
+- **Ops** tab: **elite veteran tools** — ten workflows serious pilots actually use:
+  - **Route brief** — jump-by-jump pipe intel with kills/hr, live zKill activity, and camp flags.
+  - **Threat fusion** — single situational score from radar + camps + your location.
+  - **Career analytics** — wallet/SP trends and loss heatmap (login).
+  - **Killmail analyze** — paste a zKill URL for damage profile and top dealers.
+  - **Courier board** — public contracts ranked by ISK/m³ with risky collateral flags.
+  - **WH chain log** — persistent wormhole signature chain in local storage.
+  - **Fleet rollup** — bulk intel on pasted pilot lists with exportable summary.
+  - **Hub arbitrage** — hauling spreads across trade hubs + route danger on each leg.
+  - **Fit logistics** — EFT skills check + Jita buy/sell cost (login for skills).
+  - **Gate camps** — live camp/battle watch with auto-refresh.
 - **Intel** tab: **target & recruit vetting** with **no login required**. Look up
   any **character, corporation or alliance** and see combat stats from
   zKillboard (kills, losses, **danger %**, **gang %**, solo kills, ISK destroyed)
@@ -151,14 +174,15 @@ ever touching the game client.
 - Drag by the title bar to reposition. "Lock" makes the body click-through while
   the title bar stays grabbable.
 
-## Requirements
+## Requirements (installed app)
 
-- [Node.js](https://nodejs.org/) 18+ (includes npm)
-- Windows (also works on macOS/Linux)
+- **Windows 10/11** (installer build)
+- EVE in **windowed** or **borderless fullscreen**
 
-## Install & run
+## Run from source (developers)
 
-From this folder (`C:\Users\steve\eve-newbro-overlay`) in PowerShell:
+- [Node.js](https://nodejs.org/) 18+
+- Clone this repo, then in PowerShell:
 
 ```powershell
 npm install
@@ -174,53 +198,23 @@ For development (opens dev tools):
 npm run dev
 ```
 
-## Build an installer (share with others)
+## Publish a new release (maintainers)
 
-Package a **Windows installer** with desktop & Start menu shortcuts and the app icon.
+GitHub Actions builds the installer automatically — **players never run `build.bat`**.
 
-**Requirements:** Node.js 18+ on a Windows PC.
-
-**Easiest — run the build script** (installs deps, builds, opens `dist`):
-
-```powershell
-cd C:\Users\steve\eve-newbro-overlay
-powershell -ExecutionPolicy Bypass -File .\build-windows.ps1
-```
-
-**Or manually:**
+1. Commit your changes to `main`
+2. Bump `version` in `package.json` if needed
+3. Tag and push:
 
 ```powershell
-cd C:\Users\steve\eve-newbro-overlay
-npm install
-npm run icons
-npm run build
-dir dist
+powershell -ExecutionPolicy Bypass -File .\scripts\tag-and-release.ps1
 ```
 
-> **No `dist` folder?** The build did not finish — you must run `npm install` before `npm run build`.
-> See **[BUILD.md](BUILD.md)** for troubleshooting.
+Or manually: `git tag v0.2.1` then `git push origin v0.2.1`
 
-Outputs in the `dist/` folder:
+4. Watch **Actions** → when green, the `.exe` appears on **[Releases](https://github.com/Reyarzz/EveNewBro/releases)**
 
-| File | What to share |
-|------|----------------|
-| `EVE-NewBro-Setup-0.2.0.exe` | **Recommended** — installer; users run it once, pick install folder, get shortcuts |
-| `EVE-NewBro-Portable-0.2.0.exe` | Optional — no install; run `npm run build:portable` |
-
-**Give others:** send the **Setup** `.exe` (or upload to GitHub Releases). They do **not** need Node.js installed.
-
-**First run for end users:**
-
-1. Install (or run portable).
-2. Launch **EVE NewBro** from the desktop shortcut.
-3. Optional login: **Me** tab → follow SSO setup (free EVE developer app).
-4. Run EVE in **windowed** or **borderless** so the overlay stays visible.
-
-**Rebuild icon only** (cyan diamond on dark background):
-
-```powershell
-npm run icons
-```
+To build locally (optional): see **[BUILD.md](BUILD.md)** (`build.bat` / `build-windows.ps1`).
 
 **Developer unpack** (folder with `.exe`, no installer):
 

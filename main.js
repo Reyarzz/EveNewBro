@@ -20,6 +20,8 @@ const account = require('./src/main/account');
 const corpwatch = require('./src/main/corpwatch');
 const mail = require('./src/main/mail');
 const edenSearch = require('./src/main/eden-search');
+const ops = require('./src/main/ops');
+const webviewGuard = require('./src/main/webview-guard');
 const store = require('./src/main/store');
 const cfg = require('./config');
 
@@ -482,12 +484,36 @@ ipcMain.handle('eden:search', async (_event, query) => {
   }
 });
 
+// ---------- Elite ops hub ----------
+ipcMain.handle('ops:routeBrief', async (_event, { from, to, flag }) => ops.routeBrief(from, to, flag));
+ipcMain.handle('ops:situational', async (_event, range) => ops.situational(range));
+ipcMain.handle('ops:careerStats', async () => ops.careerStats());
+ipcMain.handle('ops:killmailAnalyze', async (_event, input) => ops.killmailAnalyze(input));
+ipcMain.handle('ops:courierBoard', async (_event, regionId) => ops.courierBoard(regionId));
+ipcMain.handle('ops:whGet', () => ops.whGet());
+ipcMain.handle('ops:whAdd', (_event, link) => {
+  try {
+    return ops.whAdd(link);
+  } catch (err) {
+    return { error: err.message || String(err) };
+  }
+});
+ipcMain.handle('ops:whRemove', (_event, id) => ops.whRemove(id));
+ipcMain.handle('ops:whClear', () => ops.whClear());
+ipcMain.handle('ops:fleetRollup', async (_event, text) => ops.fleetRollup(text));
+ipcMain.handle('ops:arbitragePro', async (_event, flag) => ops.arbitragePro(flag));
+ipcMain.handle('ops:fitLogistics', async (_event, eft) => ops.fitLogistics(eft));
+ipcMain.handle('ops:gateCamps', async () => ops.gateCamps());
+
 // Windows taskbar / Start menu grouping (matches packaged appId).
 if (process.platform === 'win32') {
   app.setAppUserModelId('com.evenewbro.overlay');
 }
 
 app.whenReady().then(() => {
+  // Strip ad/tracker iframes from zKill / Dotlan dock webview (stops console spam).
+  webviewGuard.setupIntelDockSession();
+
   // Try to silently refresh an existing session so the Me tab is ready.
   auth.refreshAccessToken().catch(() => {});
   // Refresh community fits in the background if stale (daily cadence).

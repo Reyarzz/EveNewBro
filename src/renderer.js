@@ -578,7 +578,12 @@ function pageHead(title, lead) {
       .replace(/"/g, '&quot;');
   const t = esc(title);
   const l = lead ? `<p class="page-lead">${esc(lead)}</p>` : '';
-  return `<header class="page-head"><h1 class="page-title">${t}</h1>${l}</header>`;
+  return `<header class="page-head hud-module-head">
+    <div class="hud-module-title-row">
+      <span class="hud-module-glyph" aria-hidden="true"></span>
+      <h1 class="page-title">${t}</h1>
+      <span class="hud-module-line" aria-hidden="true"></span>
+    </div>${l}</header>`;
 }
 
 function escapeAttr(s) {
@@ -1653,13 +1658,17 @@ function renderMap() {
   mapState.dockUrl = '';
 
   root.innerHTML = `
-    <header class="page-head map-page-head">
-      <h1 class="page-title">Map</h1>
-      <p class="page-lead">Live kills, sov, FW, incursions, routes, and zKill feed — no login required.</p>
-      <div class="map-head-actions">
-        <span id="map-updated" class="muted"></span>
-        <button type="button" class="mini-btn" id="map-refresh">Refresh</button>
+    <header class="page-head hud-module-head map-page-head">
+      <div class="hud-module-title-row">
+        <span class="hud-module-glyph" aria-hidden="true"></span>
+        <h1 class="page-title">Map</h1>
+        <span class="hud-module-line" aria-hidden="true"></span>
+        <div class="map-head-actions">
+          <span id="map-updated" class="muted"></span>
+          <button type="button" class="mini-btn" id="map-refresh">Refresh</button>
+        </div>
       </div>
+      <p class="page-lead">Live kills, sov, FW, incursions, routes, and zKill feed — no login required.</p>
     </header>
     <div id="map-status" class="map-status"></div>
     <div class="map-search-row">
@@ -1707,7 +1716,7 @@ function renderMap() {
         </div>
         <div id="map-sysinfo-dock" class="map-sysinfo map-sysinfo-dock"></div>
         <div id="map-dock-empty" class="dock-empty">Select a system on the map to load zKillboard or Dotlan here.</div>
-        <webview id="map-dock-webview" class="dock-webview" partition="eve-intel-dock"></webview>
+        <webview id="map-dock-webview" class="dock-webview" partition="eve-intel-dock" allowpopups="false" webpreferences="contextIsolation=yes,javascript=yes,images=yes"></webview>
         <div class="dock-hint muted tier-ultra">Select a system on the map — zKillboard &amp; Dotlan load here so you never leave the app.</div>
       </aside>
     </div>
@@ -1793,8 +1802,12 @@ function setupMapDock() {
   const wv = document.getElementById('map-dock-webview');
   if (wv && !wv.dataset.failHooked) {
     wv.dataset.failHooked = '1';
+    // -3 = aborted (navigation cancelled). Subframe ad failures are blocked in main process.
     wv.addEventListener('did-fail-load', (e) => {
-      if (e.errorCode === -3) return;
+      if (e.errorCode === -3 || e.isMainFrame === false) return;
+      if (e.validatedURL && /measureadv|omnitagjs|programmaticx|yellowblue|iqzone/i.test(e.validatedURL)) {
+        return;
+      }
     });
   }
 
@@ -4810,6 +4823,732 @@ function renderEdenResults() {
   });
 }
 
+// ---------- Ops tab (elite veteran tools) ----------
+const OPS_MODES = [
+  { id: 'route', label: 'Route' },
+  { id: 'situational', label: 'Threat' },
+  { id: 'career', label: 'Career' },
+  { id: 'killmail', label: 'Killmail' },
+  { id: 'courier', label: 'Courier' },
+  { id: 'wh', label: 'WH Log' },
+  { id: 'fleet', label: 'Fleet' },
+  { id: 'arbitrage', label: 'Arbitrage' },
+  { id: 'fit', label: 'Fit' },
+  { id: 'camps', label: 'Camps' }
+];
+
+const opsState = {
+  mode: 'route',
+  loading: false,
+  error: '',
+  route: { from: '', to: '', flag: 'shortest', data: null },
+  situational: { range: 6, data: null },
+  career: { data: null },
+  killmail: { input: '', data: null },
+  courier: { regionId: 10000002, data: null },
+  wh: { data: null },
+  fleet: { text: '', data: null },
+  arbitrage: { flag: 'shortest', data: null },
+  fit: { text: '', data: null },
+  camps: { data: null }
+};
+
+function renderOps() {
+  const root = document.getElementById('ops-view');
+  if (!window.ops) {
+    root.innerHTML = '<div class="empty-state">Ops bridge unavailable.</div>';
+    return;
+  }
+
+  const modeBtns = OPS_MODES.map(
+    (m) =>
+      `<button class="mkt-mode ops-mode${opsState.mode === m.id ? ' active' : ''}" data-omode="${m.id}">${m.label}</button>`
+  ).join('');
+
+  root.innerHTML = `
+    ${pageHead('Ops', 'Veteran tools — route briefs, threat fusion, killmail analysis, fleet rollup, WH chains, and more.')}
+    <div class="mkt-modes ops-modes">${modeBtns}</div>
+    <div id="ops-body"></div>
+  `;
+
+  root.querySelectorAll('[data-omode]').forEach((b) =>
+    b.addEventListener('click', () => {
+      opsState.mode = b.dataset.omode;
+      opsState.error = '';
+      renderOps();
+      loadOpsMode();
+    })
+  );
+
+  const body = root.querySelector('#ops-body');
+  if (opsState.mode === 'route') renderOpsRoute(body);
+  else if (opsState.mode === 'situational') renderOpsSituational(body);
+  else if (opsState.mode === 'career') renderOpsCareer(body);
+  else if (opsState.mode === 'killmail') renderOpsKillmail(body);
+  else if (opsState.mode === 'courier') renderOpsCourier(body);
+  else if (opsState.mode === 'wh') renderOpsWh(body);
+  else if (opsState.mode === 'fleet') renderOpsFleet(body);
+  else if (opsState.mode === 'arbitrage') renderOpsArbitrage(body);
+  else if (opsState.mode === 'fit') renderOpsFit(body);
+  else if (opsState.mode === 'camps') renderOpsCamps(body);
+
+  if (
+    !opsState.loading &&
+    (opsState.mode === 'wh' || opsState.mode === 'camps' || shouldAutoLoadOps())
+  ) {
+    loadOpsMode();
+  }
+}
+
+function shouldAutoLoadOps() {
+  if (opsState.mode === 'route') return !!opsState.route.data;
+  if (opsState.mode === 'situational') return !!opsState.situational.data;
+  if (opsState.mode === 'career') return !!opsState.career.data;
+  if (opsState.mode === 'killmail') return !!opsState.killmail.data;
+  if (opsState.mode === 'courier') return !!opsState.courier.data;
+  if (opsState.mode === 'wh') return !!opsState.wh.data;
+  if (opsState.mode === 'fleet') return !!opsState.fleet.data;
+  if (opsState.mode === 'arbitrage') return !!opsState.arbitrage.data;
+  if (opsState.mode === 'fit') return !!opsState.fit.data;
+  if (opsState.mode === 'camps') return !!opsState.camps.data;
+  return false;
+}
+
+function loadOpsMode() {
+  if (opsState.mode === 'wh') return loadOpsWh();
+  if (opsState.mode === 'camps') return loadOpsCamps();
+  if (opsState.mode === 'situational' && !opsState.situational.data) return runOpsSituational();
+  return Promise.resolve();
+}
+
+function opsRiskBadge(risk) {
+  const r = String(risk || 'low').toLowerCase();
+  return `<span class="ops-risk ops-risk-${r}">${r}</span>`;
+}
+
+function opsThreatBadge(level) {
+  const l = String(level || 'green').toLowerCase();
+  return `<span class="ops-threat ops-threat-${l}">${l}</span>`;
+}
+
+function renderOpsRoute(el) {
+  el.innerHTML = `
+    <div class="section-label">Jump-by-jump route brief</div>
+    <div class="route-row">
+      <input id="ops-route-from" class="search-box route-input" type="text" placeholder="From system" value="${escapeAttr(opsState.route.from)}" />
+      <input id="ops-route-to" class="search-box route-input" type="text" placeholder="To system" value="${escapeAttr(opsState.route.to)}" />
+      <select id="ops-route-flag" class="route-flag">
+        <option value="shortest"${opsState.route.flag === 'shortest' ? ' selected' : ''}>fastest</option>
+        <option value="secure"${opsState.route.flag === 'secure' ? ' selected' : ''}>safer</option>
+        <option value="insecure"${opsState.route.flag === 'insecure' ? ' selected' : ''}>less safe</option>
+      </select>
+      <button class="primary-btn mini" id="ops-route-go">Brief</button>
+    </div>
+    <div class="setup-text ops-hint">Open the Map tab once to build the system index. Combines route + kills/hr + live zKill activity per jump.</div>
+    <div id="ops-route-out"></div>
+  `;
+  el.querySelector('#ops-route-from').addEventListener('input', (e) => {
+    opsState.route.from = e.target.value;
+  });
+  el.querySelector('#ops-route-to').addEventListener('input', (e) => {
+    opsState.route.to = e.target.value;
+  });
+  el.querySelector('#ops-route-flag').addEventListener('change', (e) => {
+    opsState.route.flag = e.target.value;
+  });
+  el.querySelector('#ops-route-go').addEventListener('click', runOpsRoute);
+  renderOpsRouteOut();
+}
+
+async function runOpsRoute() {
+  const out = document.getElementById('ops-route-out');
+  if (!out) return;
+  opsState.loading = true;
+  out.innerHTML = '<div class="empty-state small">Plotting route + scanning kills…</div>';
+  try {
+    opsState.route.data = await window.ops.routeBrief(
+      opsState.route.from,
+      opsState.route.to,
+      opsState.route.flag
+    );
+  } catch (e) {
+    opsState.route.data = { ok: false, error: e.message || String(e) };
+  }
+  opsState.loading = false;
+  renderOpsRouteOut();
+}
+
+function renderOpsRouteOut() {
+  const out = document.getElementById('ops-route-out');
+  if (!out) return;
+  const d = opsState.route.data;
+  if (!d) return;
+  if (!d.ok) {
+    out.innerHTML = `<div class="me-error">${escapeHtml(d.error || 'Route brief failed.')}</div>`;
+    return;
+  }
+  const rows = (d.jumps || [])
+    .map(
+      (j) =>
+        `<tr class="${j.camp ? 'ops-camp-row' : ''}${j.endpoint ? ' ops-endpoint' : ''}">
+          <td>${escapeHtml(j.name)}</td>
+          <td class="muted">${escapeHtml(j.region)}</td>
+          <td class="${secClass(j.sec)}">${j.sec.toFixed(1)}</td>
+          <td>${j.killsHr}${j.podHr ? ` <span class="muted">(${j.podHr} pod)</span>` : ''}</td>
+          <td>${j.liveRecent ? `<span class="ops-live">${j.liveRecent}</span>` : '—'}</td>
+          <td>${j.camp ? '<span class="rad-tag rad-camp">CAMP?</span>' : ''}</td>
+        </tr>`
+    )
+    .join('');
+  const hot = d.hotGate
+    ? `<div class="ops-summary">Hot gate: <b>${escapeHtml(d.hotGate.name)}</b> — ${d.hotGate.killsHr} kills/hr</div>`
+    : '';
+  out.innerHTML = `
+    <div class="ops-brief-head">
+      <span><b>${escapeHtml(d.from)}</b> → <b>${escapeHtml(d.to)}</b> · ${d.jumpCount}j · ${opsRiskBadge(d.risk)}</span>
+      <span class="muted">${d.totalKillsHr} ship/pod kills/hr on pipe</span>
+    </div>
+    ${hot}
+    <table class="ops-table">
+      <thead><tr><th>System</th><th>Region</th><th>Sec</th><th>Kills/hr</th><th>Live</th><th></th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+  `;
+}
+
+function renderOpsSituational(el) {
+  el.innerHTML = `
+    <div class="section-label">Situational threat fusion
+      <select id="ops-sit-range" class="route-flag">
+        ${[4, 6, 8, 10].map((j) => `<option value="${j}"${opsState.situational.range === j ? ' selected' : ''}>${j}j</option>`).join('')}
+      </select>
+      <button class="mini-btn" id="ops-sit-go">Scan</button>
+    </div>
+    <div class="setup-text ops-hint">Fuses radar, gate camps, and your current location into a single threat score. Log in for location-aware intel.</div>
+    <div id="ops-sit-out"></div>
+  `;
+  el.querySelector('#ops-sit-range').addEventListener('change', (e) => {
+    opsState.situational.range = Number(e.target.value) || 6;
+  });
+  el.querySelector('#ops-sit-go').addEventListener('click', runOpsSituational);
+  renderOpsSituationalOut();
+}
+
+async function runOpsSituational() {
+  const out = document.getElementById('ops-sit-out');
+  if (!out) return;
+  opsState.loading = true;
+  out.innerHTML = '<div class="empty-state small">Fusing threat data…</div>';
+  try {
+    opsState.situational.data = await window.ops.situational(opsState.situational.range);
+  } catch (e) {
+    opsState.situational.data = { ok: false, error: e.message || String(e) };
+  }
+  opsState.loading = false;
+  renderOpsSituationalOut();
+}
+
+function renderOpsSituationalOut() {
+  const out = document.getElementById('ops-sit-out');
+  if (!out) return;
+  const d = opsState.situational.data;
+  if (!d) return;
+  if (!d.ok) {
+    out.innerHTML = `<div class="me-error">${escapeHtml(d.error || 'Threat scan failed.')}</div>`;
+    return;
+  }
+  const reasons = (d.reasons || []).map((r) => `<li>${escapeHtml(r)}</li>`).join('');
+  const r = d.radar || {};
+  const near = (r.nearby || [])
+    .slice(0, 12)
+    .map(
+      (n) =>
+        `<button class="rad-row lvl${n.level}"><span class="rad-j">${n.jumps}j</span><span class="rad-name">${escapeHtml(n.name)}</span><span class="rad-mid muted">${n.ship + n.pod} k/hr</span>${dangerTag(n)}</button>`
+    )
+    .join('');
+  out.innerHTML = `
+    <div class="ops-sit-head">
+      <span>Threat score <b>${d.score}</b></span>
+      ${opsThreatBadge(d.level)}
+    </div>
+    <ul class="ops-reasons">${reasons || '<li class="muted">No elevated threats detected.</li>'}</ul>
+    ${r.location ? `<div class="rad-loc">You are in <b>${escapeHtml(r.location.name)}</b> <span class="${secClass(r.location.sec)}">${r.location.sec.toFixed(1)}</span></div>` : ''}
+    ${near || ''}
+  `;
+}
+
+function renderOpsCareer(el) {
+  el.innerHTML = `
+    <div class="section-label">Career analytics <button class="mini-btn" id="ops-career-go">Load</button></div>
+    <div class="setup-text ops-hint">Wallet trends, SP growth, K/D, and a loss heatmap — same data as Me tab, tuned for quick review.</div>
+    <div id="ops-career-out"></div>
+  `;
+  el.querySelector('#ops-career-go').addEventListener('click', runOpsCareer);
+  if (opsState.career.data) renderOpsCareerOut();
+}
+
+async function runOpsCareer() {
+  const out = document.getElementById('ops-career-out');
+  if (!out) return;
+  opsState.loading = true;
+  out.innerHTML = '<div class="empty-state small">Reading wallet / SP / loss history…</div>';
+  try {
+    opsState.career.data = await window.ops.careerStats();
+    out.innerHTML = renderCareer(opsState.career.data);
+    const c = out.querySelector('#career-spark-net');
+    if (c && opsState.career.data.history) drawSpark(c, opsState.career.data.history.map((h) => h.wallet));
+    const c2 = out.querySelector('#career-spark-sp');
+    if (c2 && opsState.career.data.history) drawSpark(c2, opsState.career.data.history.map((h) => h.sp));
+  } catch (e) {
+    out.innerHTML = `<div class="me-error">${escapeHtml(e.message || String(e))}</div>`;
+  }
+  opsState.loading = false;
+}
+
+function renderOpsCareerOut() {
+  const out = document.getElementById('ops-career-out');
+  if (!out || !opsState.career.data) return;
+  out.innerHTML = renderCareer(opsState.career.data);
+}
+
+function renderOpsKillmail(el) {
+  el.innerHTML = `
+    <div class="section-label">Killmail counter-intel</div>
+    <input id="ops-km-input" class="search-box" type="text" placeholder="zKill URL or kill ID…" value="${escapeAttr(opsState.killmail.input)}" />
+    <button class="primary-btn mini" id="ops-km-go">Analyze</button>
+    <div id="ops-km-out"></div>
+  `;
+  el.querySelector('#ops-km-input').addEventListener('input', (e) => {
+    opsState.killmail.input = e.target.value;
+  });
+  el.querySelector('#ops-km-go').addEventListener('click', runOpsKillmail);
+  renderOpsKillmailOut();
+}
+
+async function runOpsKillmail() {
+  const out = document.getElementById('ops-km-out');
+  if (!out) return;
+  opsState.loading = true;
+  out.innerHTML = '<div class="empty-state small">Pulling killmail from zKill + ESI…</div>';
+  try {
+    opsState.killmail.data = await window.ops.killmailAnalyze(opsState.killmail.input);
+  } catch (e) {
+    opsState.killmail.data = { ok: false, error: e.message || String(e) };
+  }
+  opsState.loading = false;
+  renderOpsKillmailOut();
+}
+
+function renderOpsKillmailOut() {
+  const out = document.getElementById('ops-km-out');
+  if (!out) return;
+  const d = opsState.killmail.data;
+  if (!d) return;
+  if (!d.ok) {
+    out.innerHTML = `<div class="me-error">${escapeHtml(d.error || 'Analysis failed.')}</div>`;
+    return;
+  }
+  const profile = (d.damageProfile || [])
+    .map((p) => `<span class="dt-pill dt-${p.type === 'em' ? 'em' : p.type === 'thermal' ? 'th' : p.type === 'kinetic' ? 'ki' : 'ex'}">${p.type.toUpperCase()} ${p.pct}%</span>`)
+    .join(' ');
+  const top = (d.topDamage || [])
+    .map(
+      (t) =>
+        `<div class="ops-km-row"><span>${escapeHtml(t.ship)}</span><span class="muted">${iskShortR(t.damage)}</span>${t.finalBlow ? '<span class="rad-tag rad-hot">FB</span>' : ''}</div>`
+    )
+    .join('');
+  out.innerHTML = `
+    <div class="ops-km-head">
+      <button class="link-btn" data-url="${escapeAttr(d.url)}">${escapeHtml(d.victim)} lost in ${escapeHtml(d.system)}</button>
+      <span class="muted">${iskShortR(d.value)} · ${d.attackers} attackers</span>
+    </div>
+    <div class="section-label small">Damage profile</div>
+    <div class="ops-km-profile">${profile || '<span class="muted">—</span>'}</div>
+    <div class="ops-hint muted">${escapeHtml(d.hint || '')}</div>
+    <div class="section-label small">Top damage dealers</div>
+    ${top || '<div class="empty-state small">—</div>'}
+  `;
+  out.querySelector('[data-url]')?.addEventListener('click', (e) => {
+    const url = e.currentTarget.dataset.url;
+    if (url && window.eve) window.eve.openExternal(url);
+  });
+}
+
+function renderOpsCourier(el) {
+  el.innerHTML = `
+    <div class="section-label">Courier profit board
+      <select id="ops-courier-region" class="route-flag">
+        <option value="10000002"${opsState.courier.regionId === 10000002 ? ' selected' : ''}>The Forge</option>
+        <option value="10000043"${opsState.courier.regionId === 10000043 ? ' selected' : ''}>Domain</option>
+        <option value="10000032"${opsState.courier.regionId === 10000032 ? ' selected' : ''}>Sinq Laison</option>
+        <option value="10000030"${opsState.courier.regionId === 10000030 ? ' selected' : ''}>Heimatar</option>
+        <option value="10000042"${opsState.courier.regionId === 10000042 ? ' selected' : ''}>Metropolis</option>
+      </select>
+      <button class="mini-btn" id="ops-courier-go">Scan</button>
+    </div>
+    <div class="setup-text ops-hint">Ranks public courier contracts by ISK/m³ and flags risky collateral ratios.</div>
+    <div id="ops-courier-out"></div>
+  `;
+  el.querySelector('#ops-courier-region').addEventListener('change', (e) => {
+    opsState.courier.regionId = Number(e.target.value) || 10000002;
+  });
+  el.querySelector('#ops-courier-go').addEventListener('click', runOpsCourier);
+  renderOpsCourierOut();
+}
+
+async function runOpsCourier() {
+  const out = document.getElementById('ops-courier-out');
+  if (!out) return;
+  opsState.loading = true;
+  out.innerHTML = '<div class="empty-state small">Scanning public courier contracts…</div>';
+  try {
+    opsState.courier.data = await window.ops.courierBoard(opsState.courier.regionId);
+  } catch (e) {
+    opsState.courier.data = { ok: false, error: e.message || String(e) };
+  }
+  opsState.loading = false;
+  renderOpsCourierOut();
+}
+
+function courierGradeTag(grade) {
+  const g = String(grade || 'fair');
+  return `<span class="ops-grade ops-grade-${g}">${g}</span>`;
+}
+
+function renderOpsCourierOut() {
+  const out = document.getElementById('ops-courier-out');
+  if (!out) return;
+  const d = opsState.courier.data;
+  if (!d) return;
+  if (!d.ok) {
+    out.innerHTML = `<div class="me-error">${escapeHtml(d.error || 'Courier scan failed.')}</div>`;
+    return;
+  }
+  const rows = (d.rows || [])
+    .map(
+      (c) =>
+        `<div class="ops-courier-row">
+          <span class="ops-courier-grade">${courierGradeTag(c.grade)}</span>
+          <span class="ops-courier-main">
+            <span class="ct-val">${iskShortR(c.reward)}</span>
+            <span class="ct-sub muted">${escapeHtml(c.start)} → ${escapeHtml(c.end)} · ${volFmt(c.volume)} m³</span>
+          </span>
+          <span class="ops-courier-meta muted">${c.iskPerM3.toLocaleString()} ISK/m³ · col ${iskShortR(c.collateral)}</span>
+        </div>`
+    )
+    .join('');
+  out.innerHTML = rows || '<div class="empty-state small">No courier contracts found.</div>';
+}
+
+async function loadOpsWh() {
+  try {
+    opsState.wh.data = await window.ops.whGet();
+  } catch (_e) {
+    opsState.wh.data = { links: [] };
+  }
+  const body = document.getElementById('ops-body');
+  if (body && opsState.mode === 'wh') renderOpsWh(body);
+}
+
+function renderOpsWh(el) {
+  const data = opsState.wh.data || { links: [] };
+  el.innerHTML = `
+    <div class="section-label">WH chain log
+      <button class="mini-btn" id="ops-wh-clear">Clear all</button>
+    </div>
+    <div class="ops-wh-form">
+      <input id="ops-wh-from" class="search-box" type="text" placeholder="From sig (e.g. C3a)" />
+      <input id="ops-wh-to" class="search-box" type="text" placeholder="To sig (e.g. HS)" />
+      <input id="ops-wh-mass" class="search-box" type="text" placeholder="Mass (optional)" />
+      <input id="ops-wh-static" class="search-box" type="text" placeholder="Static (optional)" />
+      <button class="primary-btn mini" id="ops-wh-add">Add link</button>
+    </div>
+    <input id="ops-wh-note" class="search-box" type="text" placeholder="Note (optional)" style="margin-top:6px;width:100%" />
+    <div id="ops-wh-out"></div>
+  `;
+  el.querySelector('#ops-wh-add').addEventListener('click', async () => {
+    const link = {
+      from: el.querySelector('#ops-wh-from').value,
+      to: el.querySelector('#ops-wh-to').value,
+      mass: el.querySelector('#ops-wh-mass').value,
+      static: el.querySelector('#ops-wh-static').value,
+      note: el.querySelector('#ops-wh-note').value
+    };
+    const res = await window.ops.whAdd(link);
+    if (res && res.error) {
+      alert(res.error);
+      return;
+    }
+    opsState.wh.data = res;
+    renderOpsWh(el);
+  });
+  el.querySelector('#ops-wh-clear').addEventListener('click', async () => {
+    opsState.wh.data = await window.ops.whClear();
+    renderOpsWh(el);
+  });
+  const out = el.querySelector('#ops-wh-out');
+  const links = (data.links || [])
+    .map(
+      (l) =>
+        `<div class="ops-wh-row">
+          <span class="ops-wh-sig"><b>${escapeHtml(l.from)}</b> → <b>${escapeHtml(l.to)}</b></span>
+          <span class="muted">${[l.mass, l.static, l.note].filter(Boolean).join(' · ')}</span>
+          <span class="muted">${new Date(l.ts).toLocaleString()}</span>
+          <button class="mini-btn ops-wh-del" data-id="${l.id}">×</button>
+        </div>`
+    )
+    .join('');
+  out.innerHTML = links || '<div class="empty-state small">No wormhole links logged yet.</div>';
+  out.querySelectorAll('.ops-wh-del').forEach((b) =>
+    b.addEventListener('click', async () => {
+      opsState.wh.data = await window.ops.whRemove(Number(b.dataset.id));
+      renderOpsWh(el);
+    })
+  );
+}
+
+function renderOpsFleet(el) {
+  el.innerHTML = `
+    <div class="section-label">Fleet intel rollup</div>
+    <textarea id="ops-fleet-input" class="text-area" placeholder="Paste pilot names, one per line (up to 100)…">${escapeAttr(opsState.fleet.text)}</textarea>
+    <button class="primary-btn mini" id="ops-fleet-go">Roll up</button>
+    <button class="mini-btn" id="ops-fleet-copy">Copy export</button>
+    <div id="ops-fleet-out"></div>
+  `;
+  el.querySelector('#ops-fleet-input').addEventListener('input', (e) => {
+    opsState.fleet.text = e.target.value;
+  });
+  el.querySelector('#ops-fleet-go').addEventListener('click', runOpsFleet);
+  el.querySelector('#ops-fleet-copy').addEventListener('click', () => {
+    const t = opsState.fleet.data && opsState.fleet.data.exportText;
+    if (t) navigator.clipboard.writeText(t).catch(() => {});
+  });
+  renderOpsFleetOut();
+}
+
+async function runOpsFleet() {
+  const out = document.getElementById('ops-fleet-out');
+  if (!out) return;
+  opsState.loading = true;
+  out.innerHTML = '<div class="empty-state small">Looking up pilots on zKill…</div>';
+  try {
+    opsState.fleet.data = await window.ops.fleetRollup(opsState.fleet.text);
+  } catch (e) {
+    opsState.fleet.data = { ok: false, error: e.message || String(e) };
+  }
+  opsState.loading = false;
+  renderOpsFleetOut();
+}
+
+function renderOpsFleetOut() {
+  const out = document.getElementById('ops-fleet-out');
+  if (!out) return;
+  const d = opsState.fleet.data;
+  if (!d) return;
+  if (!d.ok) {
+    out.innerHTML = `<div class="me-error">${escapeHtml(d.error || 'Fleet rollup failed.')}</div>`;
+    return;
+  }
+  const counts = d.counts || {};
+  const summary = `high ${counts.high || 0} · med ${counts.medium || 0} · low ${counts.low || 0} · ${d.total} pilots`;
+  const rows = (d.rows || [])
+    .map(
+      (r) =>
+        `<div class="ops-fleet-row ops-threat-${r.threat}">
+          <span class="ops-fleet-threat">${r.threat.toUpperCase()}</span>
+          <span class="ops-fleet-name">${escapeHtml(r.name)}</span>
+          <span class="muted">${r.kills}k · ${Math.round(r.danger)}%</span>
+          <span class="muted">${escapeHtml(r.corporation || '')}</span>
+        </div>`
+    )
+    .join('');
+  out.innerHTML = `
+    <div class="ops-fleet-summary">${summary}</div>
+    ${rows}
+  `;
+}
+
+function renderOpsArbitrage(el) {
+  el.innerHTML = `
+    <div class="section-label">Hub arbitrage + route risk
+      <select id="ops-arb-flag" class="route-flag">
+        <option value="shortest"${opsState.arbitrage.flag === 'shortest' ? ' selected' : ''}>fastest routes</option>
+        <option value="secure"${opsState.arbitrage.flag === 'secure' ? ' selected' : ''}>safer routes</option>
+      </select>
+      <button class="mini-btn" id="ops-arb-go">Scan</button>
+    </div>
+    <div class="setup-text ops-hint">Best hauling spreads across the five trade hubs, annotated with pipe danger between hubs.</div>
+    <div id="ops-arb-out"></div>
+  `;
+  el.querySelector('#ops-arb-flag').addEventListener('change', (e) => {
+    opsState.arbitrage.flag = e.target.value;
+  });
+  el.querySelector('#ops-arb-go').addEventListener('click', runOpsArbitrage);
+  renderOpsArbitrageOut();
+}
+
+async function runOpsArbitrage() {
+  const out = document.getElementById('ops-arb-out');
+  if (!out) return;
+  opsState.loading = true;
+  out.innerHTML = '<div class="empty-state small">Scanning hub spreads + route danger…</div>';
+  try {
+    opsState.arbitrage.data = await window.ops.arbitragePro(opsState.arbitrage.flag);
+  } catch (e) {
+    opsState.arbitrage.data = { ok: false, error: e.message || String(e) };
+  }
+  opsState.loading = false;
+  renderOpsArbitrageOut();
+}
+
+function opsHubRisk(haul, danger) {
+  if (!haul || !danger) return '';
+  const key = `${haul.from}\u2192${haul.to}`;
+  const r = danger[key];
+  if (!r) return '';
+  return `<span class="ops-route-risk muted">${r.kills || 0} k/hr on pipe</span>`;
+}
+
+function renderOpsArbitrageOut() {
+  const out = document.getElementById('ops-arb-out');
+  if (!out) return;
+  const d = opsState.arbitrage.data;
+  if (!d) return;
+  if (!d.ok) {
+    out.innerHTML = `<div class="me-error">${escapeHtml(d.error || 'Arbitrage scan failed.')}</div>`;
+    return;
+  }
+  const danger = d.hubDanger || {};
+  const rows = (d.deals || [])
+    .filter((x) => x.haul)
+    .map((x) => {
+      const h = x.haul;
+      return `<div class="ops-arb-row">
+        <span class="ops-arb-name">${escapeHtml(x.name)}</span>
+        <span class="ops-arb-route muted">${escapeHtml(h.from)} → ${escapeHtml(h.to)}</span>
+        <span class="ops-arb-profit">${iskShortR(h.profit)} <span class="muted">(${h.margin.toFixed(1)}%)</span></span>
+        ${opsHubRisk(h, danger)}
+      </div>`;
+    })
+    .join('');
+  out.innerHTML = rows || '<div class="empty-state small">No strong hauling spreads right now.</div>';
+}
+
+function renderOpsFit(el) {
+  el.innerHTML = `
+    <div class="section-label">Fit logistics</div>
+    <textarea id="ops-fit-input" class="text-area" placeholder="Paste an EFT fit — skills check + Jita buy/sell cost…">${escapeAttr(opsState.fit.text)}</textarea>
+    <button class="primary-btn mini" id="ops-fit-go">Check</button>
+    <div id="ops-fit-out"></div>
+  `;
+  el.querySelector('#ops-fit-input').addEventListener('input', (e) => {
+    opsState.fit.text = e.target.value;
+  });
+  el.querySelector('#ops-fit-go').addEventListener('click', runOpsFit);
+  renderOpsFitOut();
+}
+
+async function runOpsFit() {
+  const out = document.getElementById('ops-fit-out');
+  if (!out) return;
+  opsState.loading = true;
+  out.innerHTML = '<div class="empty-state small">Checking skills + pricing…</div>';
+  try {
+    opsState.fit.data = await window.ops.fitLogistics(opsState.fit.text);
+  } catch (e) {
+    opsState.fit.data = { ok: false, error: e.message || String(e) };
+  }
+  opsState.loading = false;
+  renderOpsFitOut();
+}
+
+function renderOpsFitOut() {
+  const out = document.getElementById('ops-fit-out');
+  if (!out) return;
+  const d = opsState.fit.data;
+  if (!d) return;
+  if (!d.ok) {
+    out.innerHTML = `<div class="me-error">${escapeHtml(d.error || 'Fit check failed.')}</div>`;
+    return;
+  }
+  if (!d.items) {
+    out.innerHTML = '<div class="empty-state small">No modules recognized.</div>';
+    return;
+  }
+  const missing = (d.requirements || []).filter((r) => !r.ok);
+  const status = !d.loggedIn
+    ? '<div class="fc-note muted">Log in (Me tab) to compare against your trained skills.</div>'
+    : missing.length === 0
+      ? '<div class="fc-ok">✓ You can fly this fit — all skills trained.</div>'
+      : `<div class="fc-bad">✗ Missing ${missing.length} skill(s) · ${volFmt(d.totalMissingSp)} SP to train</div>`;
+  const reqRows = (d.requirements || [])
+    .map(
+      (r) =>
+        `<div class="fc-skill ${r.ok ? 'ok' : 'bad'}"><span>${escapeHtml(r.name)}</span><span>${r.have}/${r.need}</span></div>`
+    )
+    .join('');
+  const price = d.price
+    ? `<div class="fc-price">Cost ${priceFmt(d.price.totalSell)} · sell value ${priceFmt(d.price.totalBuy)}</div>`
+    : '';
+  out.innerHTML = `${status}${price}<div class="fc-skills">${reqRows}</div>`;
+}
+
+function renderOpsCamps(el) {
+  el.innerHTML = `
+    <div class="section-label">Gate camp watch <button class="mini-btn" id="ops-camps-go">Refresh</button></div>
+    <div class="setup-text ops-hint">Live gate camps and clustered battles from the threat radar — refreshes every 60s while this tab is open.</div>
+    <div id="ops-camps-out"></div>
+  `;
+  el.querySelector('#ops-camps-go').addEventListener('click', loadOpsCamps);
+  renderOpsCampsOut();
+  if (!opsState.campsTimer) {
+    opsState.campsTimer = setInterval(() => {
+      if (opsState.mode === 'camps' && document.getElementById('ops-camps-out')) loadOpsCamps();
+    }, 60000);
+  }
+}
+
+async function loadOpsCamps() {
+  const out = document.getElementById('ops-camps-out');
+  if (!out) return;
+  if (!opsState.camps.data) out.innerHTML = '<div class="empty-state small">Scanning for gate camps…</div>';
+  try {
+    opsState.camps.data = await window.ops.gateCamps();
+  } catch (e) {
+    opsState.camps.data = { ok: false, error: e.message || String(e) };
+  }
+  renderOpsCampsOut();
+}
+
+function renderOpsCampsOut() {
+  const out = document.getElementById('ops-camps-out');
+  if (!out) return;
+  const d = opsState.camps.data;
+  if (!d) return;
+  if (!d.ok) {
+    out.innerHTML = `<div class="me-error">${escapeHtml(d.error || 'Camp scan failed. Open Map tab first.')}</div>`;
+    return;
+  }
+  const camps = (d.camps || [])
+    .map(
+      (b) =>
+        `<button class="rad-row"><span class="rad-name">${escapeHtml(b.name)}</span><span class="rad-mid muted">${escapeHtml(b.region)} · ${(b.topShips || []).slice(0, 2).join(', ')}</span>${b.camp ? '<span class="rad-tag rad-camp">CAMP?</span>' : `<span class="rad-tag rad-battle">${b.kills}</span>`}</button>`
+    )
+    .join('');
+  const hot = (d.nearbyHot || [])
+    .map(
+      (n) =>
+        `<button class="rad-row lvl${n.level}"><span class="rad-j">${n.jumps}j</span><span class="rad-name">${escapeHtml(n.name)}</span><span class="rad-mid muted">${n.ship + n.pod} k/hr</span>${dangerTag(n)}</button>`
+    )
+    .join('');
+  out.innerHTML = `
+    <div class="section-label small">Likely gate camps</div>
+    ${camps || '<div class="empty-state small">No obvious camps right now.</div>'}
+    <div class="section-label small">Hot systems within 3j (if logged in)</div>
+    ${hot || '<div class="empty-state small">—</div>'}
+  `;
+}
+
 // ---------- Navigation ----------
 function activateTab(name) {
   const navItems = document.querySelectorAll('.nav-item[data-tab]');
@@ -4826,6 +5565,7 @@ function activateTab(name) {
   if (name === 'intel') renderIntel();
   if (name === 'account') refreshAccountRoster().then(renderAccount);
   if (name === 'search') renderSearch();
+  if (name === 'ops') renderOps();
   if (name === 'industry') renderIndustry();
   if (name === 'tools') renderTools();
 }
@@ -4914,12 +5654,12 @@ function updateStatus(locked) {
   if (!status) return;
   if (isDesktopMode()) {
     status.textContent =
-      'Expanded intel · drag title bar to move · edges to resize · Alt+Shift+D to shrink';
+      'DESKTOP MODE · DRAG TITLEBAR · RESIZE EDGES · ALT+SHIFT+D COMPACT';
     return;
   }
   status.textContent = locked
-    ? 'Click-through on — hover title bar to interact · Alt+Shift+E'
-    : 'Alt+E hide · Alt+Shift+D expand · drag title bar to move';
+    ? 'CLICK-THROUGH ACTIVE · HOVER TITLEBAR TO INTERACT · ALT+SHIFT+E'
+    : 'TITLEBAR · DRAG · ALT+SHIFT+D EXPAND · ALT+E HIDE';
 }
 
 // ---------- Global status strip (EVE time / downtime / TQ status) ----------
