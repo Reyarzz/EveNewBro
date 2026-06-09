@@ -18,6 +18,8 @@ jobs:
       matrix:
         os: [windows-latest, macos-latest]
     runs-on: ${{ matrix.os }}
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: false
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -34,15 +36,27 @@ jobs:
       - name: Generate icons
         run: npm run icons
 
+      - name: Verify build prerequisites
+        run: node scripts/check-build.js
+
+      - name: Clear winCodeSign cache (Windows CI symlink workaround)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $cache = Join-Path $env:LOCALAPPDATA 'electron-builder\Cache\winCodeSign'
+          if (Test-Path $cache) { Remove-Item -Recurse -Force $cache }
+
       - name: Build Windows installer
         if: runner.os == 'Windows'
-        run: npm run build:win
+        run: npx electron-builder --win --publish never
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: false
+          WIN_CSC_LINK: ''
+          WIN_CSC_KEY_PASSWORD: ''
 
       - name: Build macOS installers
         if: runner.os == 'macOS'
-        run: npm run build:mac
+        run: npx electron-builder --mac dmg --arm64 --x64 --publish never
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: false
           CI: true
@@ -62,6 +76,7 @@ jobs:
 
   release:
     needs: build
+    if: ${{ always() && !cancelled() }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -78,7 +93,13 @@ jobs:
         run: |
           mkdir -p release-flat
           find release-assets -type f \( -name '*.exe' -o -name '*.dmg' \) -exec cp -v {} release-flat/ \;
+          count=$(find release-flat -type f | wc -l)
+          echo "Found $count installer(s)"
           ls -la release-flat
+          if [ "$count" -eq 0 ]; then
+            echo "::error::No installer files found. Check the build job logs."
+            exit 1
+          fi
 
       - name: Resolve release tag
         id: tag
@@ -96,7 +117,8 @@ jobs:
           tag_name: ${{ steps.tag.outputs.tag }}
           name: EVE NewBro ${{ steps.tag.outputs.tag }}
           generate_release_notes: true
+          make_latest: true
           files: release-flat/*
-          fail_on_unmatched_files: true
+          fail_on_unmatched_files: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

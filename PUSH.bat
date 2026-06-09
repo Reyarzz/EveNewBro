@@ -2,28 +2,34 @@
 cd /d "%~dp0"
 title Push to GitHub + Release
 echo.
-echo This pushes code and tags v0.2.3 so GitHub Actions builds Win + Mac installers.
+echo This pushes code and tags v0.2.4 so GitHub Actions builds Win + Mac installers.
 echo You may be asked to sign in to GitHub once.
 echo.
 pause
 
 git add -A
 git reset node_modules 2>nul
-git commit -m "Add Ops hub, Photon HUD UI, release workflow, and install docs"
+git commit -m "Fix release workflow so exe and dmg attach to GitHub Releases"
 if errorlevel 1 echo (nothing new to commit is OK)
 
 git push origin main
 if errorlevel 1 goto fail
 
-git tag -f v0.2.3
-git push origin v0.2.3 --force
+git tag v0.2.4
+git push origin v0.2.4
 if errorlevel 1 goto fail
 
 echo.
-echo DONE. Open Actions and wait ~10 min for the installer:
+echo DONE. Open Actions and wait ~10 min for green checkmark:
 echo   https://github.com/Reyarzz/EveNewBro/actions
-echo Then players download from:
-echo   https://github.com/Reyarzz/EveNewBro/releases/latest
+echo.
+echo Release should then show (below the automatic source zip/tar.gz):
+echo   EVE-NewBro-Setup-0.2.4.exe
+echo   EVE-NewBro-0.2.4-arm64.dmg
+echo   EVE-NewBro-0.2.4-x64.dmg
+echo.
+echo If CI fails, upload your local dist\*.exe manually:
+echo   powershell -ExecutionPolicy Bypass -File scripts\upload-release.ps1
 echo.
 pause
 exit /b 0

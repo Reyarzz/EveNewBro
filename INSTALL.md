@@ -4,6 +4,8 @@
 
 Open **[Latest release](https://github.com/Reyarzz/EveNewBro/releases/latest)** and pick the file for your system.
 
+> **Note:** Every release also lists automatic **Source code (zip)** and **Source code (tar.gz)** links from GitHub. Ignore those for playing — scroll to the **Assets** section for the installer (`.exe` or `.dmg`).
+
 ---
 
 ## Windows

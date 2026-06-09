@@ -1,6 +1,6 @@
 {
   "name": "eve-newbro-overlay",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "EVE Online companion overlay — market, map, intel, fits, and account tools.",
   "main": "main.js",
   "scripts": {
@@ -55,6 +55,7 @@
       "icon": "build/icon.ico",
       "artifactName": "EVE-NewBro-Setup-${version}.${ext}",
       "signAndEditExecutable": false,
+      "signDlls": false,
       "sign": null
     },
     "nsis": {
