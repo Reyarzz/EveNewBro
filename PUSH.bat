@@ -2,7 +2,7 @@
 cd /d "%~dp0"
 title Push to GitHub + Release
 echo.
-echo This pushes code and tags v0.2.2 so GitHub Actions builds Win + Mac installers.
+echo This pushes code and tags v0.2.3 so GitHub Actions builds Win + Mac installers.
 echo You may be asked to sign in to GitHub once.
 echo.
 pause
@@ -15,8 +15,8 @@ if errorlevel 1 echo (nothing new to commit is OK)
 git push origin main
 if errorlevel 1 goto fail
 
-git tag -f v0.2.2
-git push origin v0.2.2 --force
+git tag -f v0.2.3
+git push origin v0.2.3 --force
 if errorlevel 1 goto fail
 
 echo.
