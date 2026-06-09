@@ -72,6 +72,8 @@ jobs:
           path: |
             dist/*.exe
             dist/*.dmg
+            dist/*.blockmap
+            dist/latest*.yml
           if-no-files-found: error
 
   release:
@@ -92,8 +94,8 @@ jobs:
       - name: Flatten release files
         run: |
           mkdir -p release-flat
-          find release-assets -type f \( -name '*.exe' -o -name '*.dmg' \) -exec cp -v {} release-flat/ \;
-          count=$(find release-flat -type f | wc -l)
+          find release-assets -type f \( -name '*.exe' -o -name '*.dmg' -o -name '*.blockmap' -o -name 'latest*.yml' \) -exec cp -v {} release-flat/ \;
+          count=$(find release-flat -type f \( -name '*.exe' -o -name '*.dmg' \) | wc -l)
           echo "Found $count installer(s)"
           ls -la release-flat
           if [ "$count" -eq 0 ]; then

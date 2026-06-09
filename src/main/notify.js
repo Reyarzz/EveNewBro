@@ -19,7 +19,8 @@ const DEFAULT_PREFS = {
   skillQueue: true,
   incursions: true,
   pi: true,
-  radar: true
+  radar: true,
+  clipboardActions: true
 };
 
 let timer = null;

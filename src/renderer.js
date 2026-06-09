@@ -4003,6 +4003,7 @@ async function appendNotifyPanel(root) {
     ${row('skillQueue', 'Skill queue', 'Empty or finishing within 24h (needs login)')}
     ${row('pi', 'PI extractors', 'Disabled — PI scope not accepted by EVE SSO currently')}
     ${row('radar', 'Near-me threat radar', 'When a battle/gatecamp flares up within ~6 jumps (needs login)')}
+    ${row('clipboardActions', 'Clipboard quick-actions', 'Offer Appraise / Fit check / system intel when you copy EVE text')}
   `;
   root.appendChild(div);
   div.querySelectorAll('input[type=checkbox]').forEach((cb) => {
@@ -4010,6 +4011,53 @@ async function appendNotifyPanel(root) {
       window.notify.setPrefs({ [cb.dataset.key]: cb.checked });
     });
   });
+  appendIntelWatchPanel(root);
+}
+
+async function appendIntelWatchPanel(root) {
+  if (!window.intelWatch) return;
+  let st;
+  try {
+    st = await window.intelWatch.status();
+  } catch (_e) {
+    return;
+  }
+  if (!document.getElementById('me-view').contains(root)) return;
+  const div = document.createElement('div');
+  div.className = 'notify-panel';
+  const render = (s) => {
+    const watching = s.watching && s.watching.length ? s.watching.join(', ') : 'none active';
+    const note = !s.dirExists
+      ? 'EVE chat logs folder not found — enable chat logging in EVE settings.'
+      : !s.locationKnown
+        ? 'Log in with EVE SSO so the watcher knows what "near you" means.'
+        : `Watching: ${watching}`;
+    div.innerHTML = `
+      <div class="section-label">Intel channel watcher</div>
+      <label class="notify-row"><input type="checkbox" id="iw-on" ${s.enabled ? 'checked' : ''}/><span class="nr-text"><span class="nr-label">Alert on intel reports near me</span><span class="nr-desc muted">Reads local chat logs of channels named *intel* and flashes when a reported system is close</span></span></label>
+      <div class="notify-row iw-controls">
+        <span class="nr-label">Alert radius</span>
+        <input type="number" id="iw-jumps" class="text-input iw-jumps" min="1" max="10" value="${s.jumps}"/>
+        <span class="nr-desc muted">jumps</span>
+      </div>
+      <div class="notify-row">
+        <span class="nr-label">Extra channels</span>
+        <input type="text" id="iw-channels" class="text-input" placeholder="comma separated, e.g. bombers bar" value="${escapeAttr(s.channels || '')}"/>
+      </div>
+      <div class="nr-desc muted iw-status">${note}</div>
+    `;
+    div.querySelector('#iw-on').addEventListener('change', async (e) => {
+      render(await window.intelWatch.setPrefs({ enabled: e.target.checked }));
+    });
+    div.querySelector('#iw-jumps').addEventListener('change', async (e) => {
+      render(await window.intelWatch.setPrefs({ jumps: Number(e.target.value) || 5 }));
+    });
+    div.querySelector('#iw-channels').addEventListener('change', async (e) => {
+      render(await window.intelWatch.setPrefs({ channels: e.target.value }));
+    });
+  };
+  render(st);
+  root.appendChild(div);
 }
 
 // ---------- Tools tab (damage cheat sheet / notes / news) ----------
@@ -5712,6 +5760,169 @@ function setupStatusStrip() {
   setInterval(refreshTqStatus, 60000);
 }
 
+// ---------- Footer extras (PLEX price + skill queue) ----------
+function iskCompact(n) {
+  if (!n || n <= 0) return '—';
+  if (n >= 1e9) return (n / 1e9).toFixed(2) + 'B';
+  if (n >= 1e6) return (n / 1e6).toFixed(1) + 'M';
+  if (n >= 1e3) return Math.round(n / 1e3) + 'k';
+  return String(Math.round(n));
+}
+
+async function refreshSbExtras() {
+  const el = document.getElementById('sb-extras');
+  if (!el || !window.statusbarInfo) return;
+  let info;
+  try {
+    info = await window.statusbarInfo.get();
+  } catch (_e) {
+    return;
+  }
+  const parts = [];
+  if (info.plex && info.plex.sell > 0) {
+    parts.push(`<span class="sbx" title="PLEX — Jita best sell">PLEX ${iskCompact(info.plex.sell)}</span>`);
+  }
+  const q = info.queue;
+  if (q && q.loggedIn) {
+    if (q.state === 'empty') {
+      parts.push('<span class="sbx sbx-warn" title="Skill queue is empty — add a skill!">SQ EMPTY</span>');
+    } else if (q.state === 'paused') {
+      parts.push('<span class="sbx sbx-warn" title="Skill queue is paused">SQ PAUSED</span>');
+    } else if (q.state === 'soon' || q.state === 'ok') {
+      const h = q.hoursLeft || 0;
+      const label = h >= 48 ? `${Math.round(h / 24)}d` : `${Math.round(h)}h`;
+      parts.push(
+        `<span class="sbx${q.state === 'soon' ? ' sbx-warn' : ''}" title="Skill queue ends in ${label}">SQ ${label}</span>`
+      );
+    }
+  }
+  el.innerHTML = parts.join('');
+}
+
+function setupSbExtras() {
+  refreshSbExtras();
+  setInterval(refreshSbExtras, 10 * 60 * 1000);
+}
+
+// ---------- HUD toasts (clipboard quick-actions + intel alerts) ----------
+function showHudToast({ title, body, tone = '', actions = [], ttl = 10000 }) {
+  let host = document.getElementById('hud-toasts');
+  if (!host) {
+    host = document.createElement('div');
+    host.id = 'hud-toasts';
+    document.body.appendChild(host);
+  }
+  // Keep the stack shallow — drop the oldest toast beyond 3.
+  while (host.children.length >= 3) host.removeChild(host.firstChild);
+
+  const t = document.createElement('div');
+  t.className = `hud-toast${tone ? ' ' + tone : ''}`;
+  const esc = (s) =>
+    String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  t.innerHTML = `
+    <div class="ht-head">
+      <span class="ht-title">${esc(title)}</span>
+      <button type="button" class="ht-close" aria-label="Dismiss">×</button>
+    </div>
+    ${body ? `<div class="ht-body">${esc(body)}</div>` : ''}
+    ${actions.length ? '<div class="ht-actions"></div>' : ''}
+  `;
+  const dismiss = () => {
+    if (t.parentNode) t.parentNode.removeChild(t);
+  };
+  t.querySelector('.ht-close').addEventListener('click', dismiss);
+  const actHost = t.querySelector('.ht-actions');
+  actions.forEach((a) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'ht-btn';
+    b.textContent = a.label;
+    b.addEventListener('click', () => {
+      dismiss();
+      a.fn();
+    });
+    actHost.appendChild(b);
+  });
+  host.appendChild(t);
+  setTimeout(dismiss, ttl);
+}
+
+function gotoAppraise(text) {
+  marketState.mode = 'appraise';
+  marketState.appraiseText = text;
+  marketState.detailOpen = false;
+  setTab('market');
+  doAppraise(text);
+}
+
+function gotoFitCheck(text) {
+  fitCheckState.open = true;
+  fitCheckState.text = text;
+  setTab('fits');
+  doFitCheck(text);
+}
+
+function setupClipActions() {
+  if (!window.clipActions) return;
+  window.clipActions.onDetected((hit) => {
+    if (!hit || document.hidden) return;
+    if (hit.kind === 'fit') {
+      const shipLine = (hit.text.split(/\r?\n/)[0] || '').replace(/[\[\]]/g, '');
+      showHudToast({
+        title: 'Fit on clipboard',
+        body: shipLine,
+        actions: [
+          { label: 'Appraise', fn: () => gotoAppraise(hit.text) },
+          { label: 'Fit check', fn: () => gotoFitCheck(hit.text) }
+        ]
+      });
+    } else if (hit.kind === 'items') {
+      const count = hit.text.split(/\r?\n/).filter((l) => l.trim()).length;
+      showHudToast({
+        title: 'Item list on clipboard',
+        body: `${count} lines — price it at Jita?`,
+        actions: [{ label: 'Appraise', fn: () => gotoAppraise(hit.text) }]
+      });
+    } else if (hit.kind === 'system' && hit.system) {
+      const s = hit.system;
+      const dotlan = `https://evemaps.dotlan.net/system/${encodeURIComponent(s.name.replace(/ /g, '_'))}`;
+      showHudToast({
+        title: `System: ${s.name}`,
+        body: `${s.sec.toFixed(1)} · ${s.region}`,
+        actions: [
+          { label: 'zKill', fn: () => window.eve.openExternal(`https://zkillboard.com/system/${s.id}/`) },
+          { label: 'Dotlan', fn: () => window.eve.openExternal(dotlan) }
+        ]
+      });
+    }
+  });
+}
+
+function setupIntelAlerts() {
+  if (!window.intelWatch) return;
+  window.intelWatch.onAlert((a) => {
+    if (!a || !a.system) return;
+    const where = a.jumps === 0 ? 'YOUR SYSTEM' : `${a.jumps} jump${a.jumps === 1 ? '' : 's'} out`;
+    showHudToast({
+      title: `INTEL · ${a.system.name} — ${where}`,
+      body: `${a.author} in ${a.channel}: ${a.message}`,
+      tone: 'ht-danger',
+      ttl: 15000,
+      actions: [
+        {
+          label: 'zKill',
+          fn: () => window.eve.openExternal(`https://zkillboard.com/system/${a.system.id}/`)
+        }
+      ]
+    });
+    // Red edge flash so it registers even at the corner of your eye.
+    document.body.classList.remove('intel-flash');
+    void document.body.offsetWidth; // restart the animation
+    document.body.classList.add('intel-flash');
+    setTimeout(() => document.body.classList.remove('intel-flash'), 2400);
+  });
+}
+
 // ---------- Init ----------
 (async function bootstrap() {
   await initShellMode();
@@ -5721,6 +5932,9 @@ function setupStatusStrip() {
   setupTabs();
   setupHeader();
   setupStatusStrip();
+  setupSbExtras();
+  setupClipActions();
+  setupIntelAlerts();
   loadCommunity().then(renderFits);
   if (window.market) loadCatalog().catch(() => {});
   if (esiAvailable()) {

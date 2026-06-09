@@ -1,6 +1,6 @@
 {
   "name": "eve-newbro-overlay",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "description": "EVE Online companion overlay — market, map, intel, fits, and account tools.",
   "main": "main.js",
   "scripts": {
@@ -25,6 +25,13 @@
   "license": "MIT",
   "build": {
     "forceCodeSigning": false,
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "Reyarzz",
+        "repo": "EveNewBro"
+      }
+    ],
     "appId": "com.evenewbro.overlay",
     "productName": "EVE NewBro",
     "copyright": "Copyright © EVE NewBro contributors",
@@ -49,7 +56,9 @@
       "target": [
         {
           "target": "nsis",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "icon": "build/icon.ico",
@@ -73,7 +82,9 @@
       "artifactName": "EVE-NewBro-Portable-${version}.${ext}"
     },
     "mac": {
-      "target": ["dmg"],
+      "target": [
+        "dmg"
+      ],
       "icon": "build/icon.png",
       "category": "public.app-category.games",
       "artifactName": "EVE-NewBro-${version}-${arch}.${ext}",
@@ -92,5 +103,8 @@
     "electron-builder": "^25.1.8",
     "png-to-ico": "^2.1.8",
     "pngjs": "^7.0.0"
+  },
+  "dependencies": {
+    "electron-updater": "^6.8.9"
   }
 }

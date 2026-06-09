@@ -17,6 +17,8 @@ Open **[Latest release](https://github.com/Reyarzz/EveNewBro/releases/latest)** 
 
 **SmartScreen** (unsigned app): **More info → Run anyway**
 
+Once installed, the app **updates itself automatically** from new releases — no need to re-download.
+
 ---
 
 ## macOS

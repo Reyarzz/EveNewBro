@@ -2,21 +2,21 @@
 cd /d "%~dp0"
 title Push to GitHub + Release
 echo.
-echo This pushes code and tags v0.2.4 so GitHub Actions builds Win + Mac installers.
+echo This pushes code and tags v0.2.5 so GitHub Actions builds Win + Mac installers.
 echo You may be asked to sign in to GitHub once.
 echo.
 pause
 
 git add -A
 git reset node_modules 2>nul
-git commit -m "Fix release workflow so exe and dmg attach to GitHub Releases"
+git commit -m "Add intel watcher, clipboard actions, status ticker, auto-update"
 if errorlevel 1 echo (nothing new to commit is OK)
 
 git push origin main
 if errorlevel 1 goto fail
 
-git tag v0.2.4
-git push origin v0.2.4
+git tag v0.2.5
+git push origin v0.2.5
 if errorlevel 1 goto fail
 
 echo.
@@ -40,3 +40,4 @@ echo PUSH FAILED - sign in with:  gh auth login
 echo Or use GitHub Desktop / a Personal Access Token.
 pause
 exit /b 1
+

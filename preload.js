@@ -184,3 +184,19 @@ contextBridge.exposeInMainWorld('notes', {
   get: () => ipcRenderer.invoke('notes:get'),
   set: (text) => ipcRenderer.invoke('notes:set', text)
 });
+
+contextBridge.exposeInMainWorld('statusbarInfo', {
+  get: (force) => ipcRenderer.invoke('statusbar:info', force)
+});
+
+contextBridge.exposeInMainWorld('clipActions', {
+  onDetected: (callback) =>
+    ipcRenderer.on('clip:detected', (_event, payload) => callback(payload))
+});
+
+contextBridge.exposeInMainWorld('intelWatch', {
+  status: () => ipcRenderer.invoke('intelwatch:status'),
+  setPrefs: (patch) => ipcRenderer.invoke('intelwatch:setPrefs', patch),
+  onAlert: (callback) =>
+    ipcRenderer.on('intelwatch:alert', (_event, payload) => callback(payload))
+});

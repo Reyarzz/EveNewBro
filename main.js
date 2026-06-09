@@ -22,6 +22,10 @@ const mail = require('./src/main/mail');
 const edenSearch = require('./src/main/eden-search');
 const ops = require('./src/main/ops');
 const webviewGuard = require('./src/main/webview-guard');
+const updater = require('./src/main/updater');
+const statusbar = require('./src/main/statusbar');
+const clipwatch = require('./src/main/clipwatch');
+const intelwatch = require('./src/main/intelwatch');
 const store = require('./src/main/store');
 const cfg = require('./config');
 
@@ -505,6 +509,16 @@ ipcMain.handle('ops:arbitragePro', async (_event, flag) => ops.arbitragePro(flag
 ipcMain.handle('ops:fitLogistics', async (_event, eft) => ops.fitLogistics(eft));
 ipcMain.handle('ops:gateCamps', async () => ops.gateCamps());
 
+// ---------- Footer status (PLEX price + skill queue) ----------
+ipcMain.handle('statusbar:info', async (_event, force) => statusbar.info(force));
+
+// ---------- Local intel watcher ----------
+ipcMain.handle('intelwatch:status', () => intelwatch.status());
+ipcMain.handle('intelwatch:setPrefs', (_event, patch) => {
+  intelwatch.setPrefs(patch);
+  return intelwatch.status();
+});
+
 // Windows taskbar / Start menu grouping (matches packaged appId).
 if (process.platform === 'win32') {
   app.setAppUserModelId('com.evenewbro.overlay');
@@ -521,6 +535,11 @@ app.whenReady().then(() => {
   // Start the live kill feed + background notification checks.
   zkill.start();
   notify.start();
+  // Clipboard quick-actions + intel-channel proximity alerts.
+  clipwatch.start();
+  intelwatch.start();
+  // Self-update from GitHub Releases (packaged Windows builds only).
+  updater.start();
   createOverlay();
   registerShortcuts();
 
