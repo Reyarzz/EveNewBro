@@ -9,10 +9,13 @@ ever touching the game client.
 ## Download (players — no build required)
 
 1. Go to **[github.com/Reyarzz/EveNewBro/releases/latest](https://github.com/Reyarzz/EveNewBro/releases/latest)**
-2. Download **`EVE-NewBro-Setup-….exe`** under Assets
-3. Run the installer → launch **EVE NewBro** from the desktop shortcut
+2. Download for your system:
+   - **Windows** — `EVE-NewBro-Setup-….exe`
+   - **Mac (Apple Silicon)** — `EVE-NewBro-…-arm64.dmg`
+   - **Mac (Intel)** — `EVE-NewBro-…-x64.dmg`
+3. Install and launch **EVE NewBro**
 
-Full steps (SmartScreen, optional SSO): **[INSTALL.md](INSTALL.md)**
+Full steps (SmartScreen, Mac Gatekeeper, SSO): **[INSTALL.md](INSTALL.md)**
 
 > **You do not need** Node.js, `git clone`, or `build.bat` unless you are developing the app.
 
@@ -176,7 +179,7 @@ Full steps (SmartScreen, optional SSO): **[INSTALL.md](INSTALL.md)**
 
 ## Requirements (installed app)
 
-- **Windows 10/11** (installer build)
+- **Windows 10/11** or **macOS 11+** (Intel or Apple Silicon)
 - EVE in **windowed** or **borderless fullscreen**
 
 ## Run from source (developers)

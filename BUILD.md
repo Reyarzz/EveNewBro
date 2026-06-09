@@ -26,7 +26,17 @@ npm run build
 dir dist
 ```
 
-Output: `dist\EVE-NewBro-Setup-<version>.exe`
+Outputs:
+
+| Platform | Files in `dist/` |
+|----------|------------------|
+| Windows | `EVE-NewBro-Setup-<version>.exe` |
+| macOS | `EVE-NewBro-<version>-arm64.dmg`, `…-x64.dmg`, plus `.zip` variants |
+
+```powershell
+npm run build:win   # Windows only
+npm run build:mac     # macOS only (run on a Mac, or use GitHub Actions)
+```
 
 ## Publish for everyone (recommended)
 
