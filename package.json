@@ -1,6 +1,6 @@
 {
   "name": "eve-newbro-overlay",
-  "version": "0.2.5",
+  "version": "0.2.6",
   "description": "EVE Online companion overlay — market, map, intel, fits, and account tools.",
   "main": "main.js",
   "scripts": {
@@ -11,7 +11,7 @@
     "prebuild": "node scripts/generate-icons.js",
     "build": "npm run build:win",
     "build:win": "npm run icons && node scripts/check-build.js && electron-builder --win",
-    "build:mac": "npm run icons && node scripts/check-build.js && electron-builder --mac dmg --arm64 --x64",
+    "build:mac": "npm run icons && node scripts/check-build.js && electron-builder --mac --arm64 --x64",
     "build:portable": "electron-builder --win portable",
     "build:dir": "electron-builder --win --dir"
   },
@@ -83,7 +83,8 @@
     },
     "mac": {
       "target": [
-        "dmg"
+        "dmg",
+        "zip"
       ],
       "icon": "build/icon.png",
       "category": "public.app-category.games",

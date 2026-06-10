@@ -22,12 +22,12 @@ jobs:
       CSC_IDENTITY_AUTO_DISCOVERY: false
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
-          node-version: '20'
+          node-version: '22'
           cache: npm
 
       - name: Install dependencies
@@ -56,7 +56,7 @@ jobs:
 
       - name: Build macOS installers
         if: runner.os == 'macOS'
-        run: npx electron-builder --mac dmg --arm64 --x64 --publish never
+        run: npx electron-builder --mac --arm64 --x64 --publish never
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: false
           CI: true
@@ -66,12 +66,13 @@ jobs:
         run: ls -laR dist
 
       - name: Upload installer artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: dist-${{ matrix.os }}
           path: |
             dist/*.exe
             dist/*.dmg
+            dist/*.zip
             dist/*.blockmap
             dist/latest*.yml
           if-no-files-found: error
@@ -82,10 +83,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Download all installers
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           path: release-assets
           pattern: dist-*
@@ -94,7 +95,7 @@ jobs:
       - name: Flatten release files
         run: |
           mkdir -p release-flat
-          find release-assets -type f \( -name '*.exe' -o -name '*.dmg' -o -name '*.blockmap' -o -name 'latest*.yml' \) -exec cp -v {} release-flat/ \;
+          find release-assets -type f \( -name '*.exe' -o -name '*.dmg' -o -name '*.zip' -o -name '*.blockmap' -o -name 'latest*.yml' \) -exec cp -v {} release-flat/ \;
           count=$(find release-flat -type f \( -name '*.exe' -o -name '*.dmg' \) | wc -l)
           echo "Found $count installer(s)"
           ls -la release-flat
@@ -114,7 +115,7 @@ jobs:
           fi
 
       - name: Publish GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ steps.tag.outputs.tag }}
           name: EVE NewBro ${{ steps.tag.outputs.tag }}
